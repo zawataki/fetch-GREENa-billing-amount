@@ -17,16 +17,6 @@ if (process.argv.length < 5) {
   showUsageAndExit();
 }
 
-if (process.execArgv.some((val) => ['-e', '--eval'].includes(val))) {
-  /**
-   * Add a dummy element to parse correctly the command line arguments by
-   * commandLineArgs.
-   * This is a workaround and this problem would be fixed by
-   * https://github.com/75lb/command-line-args/pull/101
-   */
-  process.argv.splice(1, 0, '');
-}
-
 const commandLineArgs = require('command-line-args');
 const optionDefinitions = [
   {
