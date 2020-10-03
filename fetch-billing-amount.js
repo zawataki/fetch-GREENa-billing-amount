@@ -88,37 +88,41 @@ async function fetchBillingAmount(page, targetYear, targetMonth) {
 }
 
 (async () => {
-  const browser = await puppeteer.launch();
-  const page = await browser.newPage();
-  const URL_LOGIN = URL_BASE + '/login';
-  await page.goto(URL_LOGIN);
+  const browser = await puppeteer.launch({headless: false});
 
-  console.debug('Log in');
+  try {
+    const page = await browser.newPage();
+    const URL_LOGIN = URL_BASE + '/login';
+    await page.goto(URL_LOGIN);
 
-  await page.type('input#inputForm_inputBean_mailAddress', EMAIL_ADDRESS);
-  await page.type('input#inputForm_inputBean_password', PASSWORD);
-  await page.click('input#inputForm__login');
-  await page.waitForNavigation();
+    console.debug('Log in');
 
-  if (page.url() === URL_LOGIN) {
-    console.error('Failed to log in.'
-      + ' Please check the email address and password are valid.');
+    await page.type('input#inputForm_inputBean_mailAddress', EMAIL_ADDRESS);
+    await page.type('input#inputForm_inputBean_password', PASSWORD);
+    await page.click('input#inputForm__login');
+    await page.waitForNavigation();
+
+    if (page.url() === URL_LOGIN) {
+      throw new Error('Failed to log in.'
+        + ' Please check the email address and password are valid.');
+    }
+
+    const now = new Date();
+    now.setDate(1);
+    for (let index = 0; index < 12; index++) {
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      console.info('Fetch a billing amount on ' + year + '-' + month);
+
+      console.info('The billing amount on ' + year + '-' + month + ': ' +
+        await fetchBillingAmount(page, year, month));
+
+      now.setMonth(now.getMonth() - 1);
+    }
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  } finally {
     await browser.close();
-    return;
   }
-
-  const now = new Date();
-  now.setDate(1);
-  for (let index = 0; index < 12; index++) {
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    console.info('Fetch a billing amount on ' + year + '-' + month);
-
-    console.info('The billing amount on ' + year + '-' + month + ': ' +
-      await fetchBillingAmount(page, year, month));
-
-    now.setMonth(now.getMonth() - 1);
-  }
-
-  await browser.close();
 })();
