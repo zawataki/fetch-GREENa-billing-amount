@@ -50,16 +50,22 @@ async function fetchBillingAmount(page, targetYear, targetMonth) {
     await page.goto(MY_PAGE);
   }
 
-  const selectTargetYearSelector = 'select#mypage_inputBean_claimYear';
+  const selectTargetYearSelector
+    = 'select#supply_point[name="inputBean.claimYear"]';
   await page.waitForSelector(selectTargetYearSelector);
 
-  page.select(selectTargetYearSelector, targetYear.toString());
+  await page.select(selectTargetYearSelector, targetYear.toString());
 
-  const tableSelector = '#billingArea > table';
+  const tableSelector = 'div#billing > table';
   await page.waitForSelector(tableSelector);
 
-  const trSelector = '#billingArea > table > tbody > '
-    + 'tr:nth-child(n+2):nth-child(-n+13)';
+  const tableHeaderTextList =
+    await page.$$eval(tableSelector + ' > tbody > tr:first-child > th',
+      (thList) => thList.map((data) => data.textContent));
+  const billingAmountColumnIndex =
+    await getBillingAmountColumnIndex(tableHeaderTextList);
+
+  const trSelector = tableSelector + ' > tbody > tr:nth-child(n+2)';
   const tableRecords = await page.$$(trSelector);
   for (const tr of tableRecords) {
     const monthElement = await tr.getProperty('firstElementChild');
@@ -69,22 +75,29 @@ async function fetchBillingAmount(page, targetYear, targetMonth) {
       continue;
     }
 
-    const showAmountButtonElement = await tr.$('#cedarTreesLast > p > a');
-    await showAmountButtonElement.click();
-    const billingAmountSelector = '#billingDetail div.total dl';
-    await page.waitForSelector(billingAmountSelector);
-
-    const billingAmountElements = await page.$$(billingAmountSelector);
-    for (const element of billingAmountElements) {
-      const str = await (await element.getProperty('innerText')).jsonValue();
-      if (RegExp('^ご請求金額').test(str)) {
-        const amountElement = await element.$('dd');
-        const amountWithUnit = await amountElement.getProperty('innerText');
-        const amount = (await amountWithUnit.jsonValue()).replace(/[¥, ]/g, '');
-        return amount;
-      }
-    }
+    const amountWithUnit = await tr.$eval(
+      ':nth-child(' + (billingAmountColumnIndex + 1) + ')',
+      (aaa) => aaa.innerText);
+    const amount = amountWithUnit.replace(/[¥, ]/g, '');
+    return amount;
   }
+}
+
+/**
+ * @param {Promise<Array<ElementHandle>>} tableHeaderTextList - a table header
+ * text list
+ */
+async function getBillingAmountColumnIndex(tableHeaderTextList) {
+  let index = 0;
+  for (const headerText of tableHeaderTextList) {
+    if (headerText === '請求金額') {
+      return index;
+    }
+
+    index++;
+  }
+
+  throw new Error('Failed to get billing amount column index');
 }
 
 (async () => {
@@ -92,6 +105,8 @@ async function fetchBillingAmount(page, targetYear, targetMonth) {
 
   try {
     const page = await browser.newPage();
+    page.setDefaultNavigationTimeout(60 * 1000);
+
     const URL_LOGIN = URL_BASE + '/login';
     await page.goto(URL_LOGIN);
 
@@ -112,8 +127,7 @@ async function fetchBillingAmount(page, targetYear, targetMonth) {
     for (let index = 0; index < 12; index++) {
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
-      console.info('Fetch a billing amount on ' + year + '-' + month);
-
+      console.info('Fetching a billing amount on ' + year + '-' + month);
       console.info('The billing amount on ' + year + '-' + month + ': ' +
         await fetchBillingAmount(page, year, month));
 
