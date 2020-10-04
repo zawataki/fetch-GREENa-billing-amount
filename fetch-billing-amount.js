@@ -75,21 +75,21 @@ if (options['target-year-month'] === undefined) {
     });
   }
 } else {
-  for (const yearMonthString of options['target-year-month']) {
+  for (const yearMonthStr of options['target-year-month']) {
     const validTargetYearMonthPattern = /^\d{4}-\d{2}$/;
-    if (!validTargetYearMonthPattern.test(yearMonthString)) {
+    if (!validTargetYearMonthPattern.test(yearMonthStr)) {
       handleMisuseAndExit(`--target-year-month option accepts only a pattern `
-        + `${validTargetYearMonthPattern}. The given value: ${yearMonthString}`);
+        + `${validTargetYearMonthPattern}. The given value: ${yearMonthStr}`);
     }
 
-    const targetYearMonth = moment(yearMonthString);
+    const targetYearMonth = moment(yearMonthStr);
     if (!targetYearMonth.isValid()) {
       handleMisuseAndExit(`"${targetYearMonth}" is invalid year month`);
     }
 
     if (targetYearMonth.isAfter(moment())) {
       handleMisuseAndExit(`--target-year-month option accepts only `
-        + `this month or the past months. The given value: ${yearMonthString}`);
+        + `this month or the past months. The given value: ${yearMonthStr}`);
     }
 
     targetYearMonthList.push({
