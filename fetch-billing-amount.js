@@ -1,20 +1,36 @@
 const puppeteer = require('puppeteer');
+const moment = require('moment');
+const path = require('path');
 
 /**
- * Show usage of this script and exit from the script
+ * Handle misuse of this script and exit from the script.
+ * @param {String} errorMessage - error message
  */
-function showUsageAndExit() {
-  const usage = `
-Usage: node ${__filename} --email EMAIL_ADDRESS --pass PASSWORD
+function handleMisuseAndExit(errorMessage) {
+  console.error('ERROR: ' + errorMessage + '\n');
 
-Fetches billing amount from GREENa.
-A default value of the period of the billing amount is last 12 months`;
+  const thisFileName = path.basename(__filename);
+  const usage = `${thisFileName}
+
+  Fetches billing amount from GREENa.
+  A default value of the period of the billing amount is last 12 months
+
+Usage
+
+  $ node ${thisFileName} --email EMAIL_ADDRESS --pass PASSWORD
+    [--target-year-month YYYY-MM]
+
+Options
+
+  --target-year-month YYYY-MM   Target year month.
+                                This accepts multiple values as below.
+                                  $ node ${thisFileName} --email EMAIL_ADDRESS
+                                    --pass PASSWORD
+                                    --target-year-month 2020-09
+                                    --target-year-month 2020-08
+`;
   console.info(usage);
   process.exit(1);
-}
-
-if (process.argv.length < 5) {
-  showUsageAndExit();
 }
 
 const commandLineArgs = require('command-line-args');
@@ -22,16 +38,70 @@ const optionDefinitions = [
   {
     name: 'email',
     type: String,
+    required: true,
   },
   {
     name: 'pass',
     type: String,
+    required: true,
+  },
+  {
+    name: 'target-year-month',
+    type: String,
+    multiple: true,
   },
 ];
 const options = commandLineArgs(optionDefinitions);
 
-if (options.email === '' || options.pass === '') {
-  showUsageAndExit();
+const requiredParameterNames = optionDefinitions.filter((opt) => opt.required)
+  .map((opt) => opt.name);
+for (const requiredParamName of requiredParameterNames) {
+  if (!options[requiredParamName]) {
+    handleMisuseAndExit(`Required parameter --${requiredParamName} is missing`);
+  }
+}
+
+const targetYearMonthList = [];
+if (options['target-year-month'] === undefined) {
+  const startOfThisMonth = moment().startOf('month');
+
+  for (let i = 0; i < 12; i++) {
+    const date = startOfThisMonth.clone().subtract(i, 'months');
+
+    targetYearMonthList.push({
+      year: date.year(),
+      // Months are zero indexed, so January is month 0.
+      month: date.month() + 1,
+    });
+  }
+} else {
+  for (const yearMonthString of options['target-year-month']) {
+    const validTargetYearMonthPattern = /^\d{4}-\d{2}$/;
+    if (!validTargetYearMonthPattern.test(yearMonthString)) {
+      handleMisuseAndExit(`--target-year-month option accepts only a pattern `
+        + `${validTargetYearMonthPattern}. The given value: ${yearMonthString}`);
+    }
+
+    const targetYearMonth = moment(yearMonthString);
+    if (!targetYearMonth.isValid()) {
+      handleMisuseAndExit(`"${targetYearMonth}" is invalid year month`);
+    }
+
+    if (targetYearMonth.isAfter(moment())) {
+      handleMisuseAndExit(`--target-year-month option accepts only `
+        + `this month or the past months. The given value: ${yearMonthString}`);
+    }
+
+    targetYearMonthList.push({
+      year: targetYearMonth.year(),
+      // Months are zero indexed, so January is month 0.
+      month: targetYearMonth.month() + 1,
+    });
+  }
+
+  if (targetYearMonthList.length === 0) {
+    handleMisuseAndExit('--target-year-month option needs some value');
+  }
 }
 
 const EMAIL_ADDRESS = options.email;
@@ -100,6 +170,7 @@ async function getBillingAmountColumnIndex(tableHeaderTextList) {
   throw new Error('Failed to get billing amount column index');
 }
 
+
 (async () => {
   const browser = await puppeteer.launch({headless: false});
 
@@ -122,16 +193,12 @@ async function getBillingAmountColumnIndex(tableHeaderTextList) {
         + ' Please check the email address and password are valid.');
     }
 
-    const now = new Date();
-    now.setDate(1);
-    for (let index = 0; index < 12; index++) {
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
+    for (const targetYearMonth of targetYearMonthList) {
+      const year = targetYearMonth.year;
+      const month = targetYearMonth.month;
       console.info('Fetching a billing amount on ' + year + '-' + month);
       console.info('The billing amount on ' + year + '-' + month + ': ' +
         await fetchBillingAmount(page, year, month));
-
-      now.setMonth(now.getMonth() - 1);
     }
   } catch (error) {
     console.error(error);
