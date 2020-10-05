@@ -124,7 +124,11 @@ async function fetchBillingAmount(page, targetYear, targetMonth) {
     = 'select#supply_point[name="inputBean.claimYear"]';
   await page.waitForSelector(selectTargetYearSelector);
 
-  await page.select(selectTargetYearSelector, targetYear.toString());
+  const selectedYear =
+    await page.$eval(selectTargetYearSelector, (sel) => sel.value);
+  if (selectedYear !== targetYear.toString()) {
+    await page.select(selectTargetYearSelector, targetYear.toString());
+  }
 
   const tableSelector = 'div#billing > table';
   await page.waitForSelector(tableSelector);
