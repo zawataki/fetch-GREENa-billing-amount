@@ -1,5 +1,4 @@
 const puppeteer = require('puppeteer');
-const moment = require('moment');
 const path = require('path');
 
 /**
@@ -61,47 +60,14 @@ for (const requiredParamName of requiredParameterNames) {
   }
 }
 
-const targetYearMonthList = [];
-if (options['target-year-month'] === undefined) {
-  const startOfThisMonth = moment().startOf('month');
-
-  for (let i = 0; i < 12; i++) {
-    const date = startOfThisMonth.clone().subtract(i, 'months');
-
-    targetYearMonthList.push({
-      year: date.year(),
-      // Months are zero indexed, so January is month 0.
-      month: date.month() + 1,
-    });
-  }
-} else {
-  for (const yearMonthStr of options['target-year-month']) {
-    const validTargetYearMonthPattern = /^\d{4}-\d{2}$/;
-    if (!validTargetYearMonthPattern.test(yearMonthStr)) {
-      handleMisuseAndExit(`--target-year-month option accepts only a pattern `
-        + `${validTargetYearMonthPattern}. The given value: ${yearMonthStr}`);
-    }
-
-    const targetYearMonth = moment(yearMonthStr);
-    if (!targetYearMonth.isValid()) {
-      handleMisuseAndExit(`"${targetYearMonth}" is invalid year month`);
-    }
-
-    if (targetYearMonth.isAfter(moment())) {
-      handleMisuseAndExit(`--target-year-month option accepts only `
-        + `this month or the past months. The given value: ${yearMonthStr}`);
-    }
-
-    targetYearMonthList.push({
-      year: targetYearMonth.year(),
-      // Months are zero indexed, so January is month 0.
-      month: targetYearMonth.month() + 1,
-    });
-  }
-
-  if (targetYearMonthList.length === 0) {
-    handleMisuseAndExit('--target-year-month option needs some value');
-  }
+const parseTargetYearMonthOption = require('./target-year-month-parser.js');
+let targetYearMonthList;
+try {
+  targetYearMonthList =
+    parseTargetYearMonthOption(options['target-year-month']);
+} catch (error) {
+  handleMisuseAndExit('Failed to parse --target-year-month option: '
+    + error.message);
 }
 
 const EMAIL_ADDRESS = options.email;
