@@ -1,6 +1,17 @@
 const puppeteer = require('puppeteer');
 const path = require('path');
 
+const originalConsoleDebug = console.debug;
+
+console.debug = function(...parameters) {
+  if (options['debug']) {
+    if (parameters.length >= 1) {
+      parameters[0] = `[DEBUG] ${parameters[0]}`;
+    }
+    originalConsoleDebug.apply(console, parameters);
+  }
+};
+
 /**
  * Handle misuse of this script and exit from the script.
  * @param {String} errorMessage - error message
@@ -17,7 +28,7 @@ function handleMisuseAndExit(errorMessage) {
 Usage
 
   $ node ${thisFileName} --email EMAIL_ADDRESS --pass PASSWORD
-    [--target-year-month YYYY-MM]
+    [--target-year-month YYYY-MM] [--debug]
 
 Options
 
@@ -27,6 +38,10 @@ Options
                                     --pass PASSWORD
                                     --target-year-month 2020-09
                                     --target-year-month 2020-08
+
+  --debug                       Debug mode.
+                                Run a browser in non-headless mode,
+                                and show debug level messages.
 `;
   console.info(usage);
   process.exit(1);
@@ -48,6 +63,10 @@ const optionDefinitions = [
     name: 'target-year-month',
     type: String,
     multiple: true,
+  },
+  {
+    name: 'debug',
+    type: Boolean,
   },
 ];
 const options = commandLineArgs(optionDefinitions);
@@ -152,7 +171,9 @@ async function getBillingAmountColumnIndex(tableHeaderTextList) {
 
 
 (async () => {
-  const browser = await puppeteer.launch({headless: false});
+  const browser = await puppeteer.launch({
+    headless: !options['debug'],
+  });
 
   try {
     const page = await browser.newPage();
