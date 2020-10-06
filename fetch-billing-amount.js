@@ -135,6 +135,7 @@ async function fetchBillingAmount(page, targetYear, targetMonth) {
 /**
  * @param {Promise<Array<ElementHandle>>} tableHeaderTextList - a table header
  * text list
+ * @return {number} Zero-based index of billing amount column.
  */
 async function getBillingAmountColumnIndex(tableHeaderTextList) {
   let index = 0;
