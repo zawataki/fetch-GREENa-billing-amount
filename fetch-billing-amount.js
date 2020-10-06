@@ -115,9 +115,18 @@ async function fetchBillingAmount(page, targetYear, targetMonth) {
       continue;
     }
 
-    const amountWithUnit = await tr.$eval(
-      ':nth-child(' + (billingAmountColumnIndex + 1) + ')',
-      (aaa) => aaa.innerText);
+    let amountWithUnit;
+    const tdList =
+      await tr.$$(`:nth-child(n + ${billingAmountColumnIndex + 1})`);
+    for (const td of tdList) {
+      const tdInnerText = await td.getProperty('innerText');
+      const tdJsonValue = await tdInnerText.jsonValue();
+      if (tdJsonValue.match(/¥[\d,]+/)) {
+        amountWithUnit = tdJsonValue;
+        break;
+      }
+    }
+
     const amount = amountWithUnit.replace(/[¥, ]/g, '');
     return amount;
   }
