@@ -13,37 +13,60 @@ console.debug = function(...parameters) {
 };
 
 /**
+ * Print usage of this script.
+ */
+function printUsage() {
+  const commandLineUsage = require('command-line-usage');
+  const thisFileName = path.basename(__filename);
+  const basicUsage =
+    `$ node ${thisFileName} --email EMAIL_ADDRESS --pass PASSWORD`;
+  const sections = [
+    {
+      header: thisFileName,
+      content: 'Fetches billing amount from GREENa.',
+    },
+    {
+      header: 'Synopsis',
+      content: [
+        `  ${basicUsage} [options ...]`,
+      ],
+      raw: true,
+    },
+    {
+      header: 'Options',
+      optionList: optionDefinitions.filter((opt) => !opt.required),
+    },
+    {
+      header: 'Examples',
+      content: [
+        'To fetch billing amount for the past 12 months including this month:',
+        '',
+        `    ${basicUsage}`,
+        '',
+        'To fetch billing amount for September 2020:',
+        '',
+        `    ${basicUsage} --target-year-month 2020-09`,
+        '',
+        'To fetch billing amount for April and August 2020:',
+        '',
+        `    ${basicUsage} --target-year-month 2020-04 2020-08`,
+      ].map((line) => '  ' + line),
+      raw: true,
+    },
+  ];
+  const usage = commandLineUsage(sections);
+  console.log(usage);
+}
+
+/**
  * Handle misuse of this script and exit from the script.
  * @param {String} errorMessage - error message
  */
 function handleMisuseAndExit(errorMessage) {
-  console.error('ERROR: ' + errorMessage + '\n');
+  console.error('ERROR: ' + errorMessage);
 
-  const thisFileName = path.basename(__filename);
-  const usage = `${thisFileName}
+  printUsage();
 
-  Fetches billing amount from GREENa.
-  A default value of the period of the billing amount is last 12 months
-
-Usage
-
-  $ node ${thisFileName} --email EMAIL_ADDRESS --pass PASSWORD
-    [--target-year-month YYYY-MM] [--debug]
-
-Options
-
-  --target-year-month YYYY-MM   Target year month.
-                                This accepts multiple values as below.
-                                  $ node ${thisFileName} --email EMAIL_ADDRESS
-                                    --pass PASSWORD
-                                    --target-year-month 2020-09
-                                    --target-year-month 2020-08
-
-  --debug                       Debug mode.
-                                Run a browser in non-headless mode,
-                                and show debug level messages.
-`;
-  console.info(usage);
   process.exit(1);
 }
 
@@ -63,10 +86,15 @@ const optionDefinitions = [
     name: 'target-year-month',
     type: String,
     multiple: true,
+    typeLabel: '{underline YYYY-MM}',
+    description: 'Target year month. e.g. 2020-08.'
+      + ' Accepts multiple year months as below.',
   },
   {
     name: 'debug',
     type: Boolean,
+    description: 'Debug mode. Run a browser in non-headless mode and'
+      + ' show debug level messages.',
   },
 ];
 const options = commandLineArgs(optionDefinitions);
