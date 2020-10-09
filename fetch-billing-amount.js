@@ -1,28 +1,19 @@
 const puppeteer = require('puppeteer');
 const path = require('path');
-
-const originalConsoleDebug = console.debug;
-
-console.debug = function(...parameters) {
-  if (options['debug']) {
-    if (parameters.length >= 1) {
-      parameters[0] = `[DEBUG] ${parameters[0]}`;
-    }
-    originalConsoleDebug.apply(console, parameters);
-  }
-};
+const log4js = require('log4js');
+const fileName = path.basename(__filename);
+const log = log4js.getLogger(fileName);
 
 /**
  * Print usage of this script.
  */
 function printUsage() {
   const commandLineUsage = require('command-line-usage');
-  const thisFileName = path.basename(__filename);
   const basicUsage =
-    `$ node ${thisFileName} --email EMAIL_ADDRESS --pass PASSWORD`;
+    `$ node ${fileName} --email EMAIL_ADDRESS --pass PASSWORD`;
   const sections = [
     {
-      header: thisFileName,
+      header: fileName,
       content: 'Fetches billing amount from GREENa.',
     },
     {
@@ -63,7 +54,7 @@ function printUsage() {
  * @param {String} errorMessage - error message
  */
 function handleMisuseAndExit(errorMessage) {
-  console.error('ERROR: ' + errorMessage);
+  log.error(errorMessage);
 
   printUsage();
 
@@ -98,6 +89,8 @@ const optionDefinitions = [
   },
 ];
 const options = commandLineArgs(optionDefinitions);
+
+log.level = options['debug'] ? 'debug' : 'info';
 
 const requiredParameterNames = optionDefinitions.filter((opt) => opt.required)
   .map((opt) => opt.name);
@@ -210,7 +203,7 @@ async function getBillingAmountColumnIndex(tableHeaderTextList) {
     const URL_LOGIN = URL_BASE + '/login';
     await page.goto(URL_LOGIN);
 
-    console.debug('Log in');
+    log.debug('Log in');
 
     await page.type('input#inputForm_inputBean_mailAddress', EMAIL_ADDRESS);
     await page.type('input#inputForm_inputBean_password', PASSWORD);
@@ -225,12 +218,12 @@ async function getBillingAmountColumnIndex(tableHeaderTextList) {
     for (const targetYearMonth of targetYearMonthList) {
       const year = targetYearMonth.year;
       const month = targetYearMonth.month;
-      console.info('Fetching a billing amount on ' + year + '-' + month);
-      console.info('The billing amount on ' + year + '-' + month + ': ' +
+      log.info('Fetching a billing amount on ' + year + '-' + month + '...');
+      console.log('Billing amount on ' + year + '-' + month + ': ' +
         await fetchBillingAmount(page, year, month));
     }
   } catch (error) {
-    console.error(error);
+    log.error(error);
     process.exit(1);
   } finally {
     await browser.close();
