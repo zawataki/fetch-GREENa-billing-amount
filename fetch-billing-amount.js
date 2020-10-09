@@ -87,8 +87,19 @@ const optionDefinitions = [
     description: 'Debug mode. Run a browser in non-headless mode and'
       + ' show debug level messages.',
   },
+  {
+    name: 'help',
+    alias: 'h',
+    type: Boolean,
+    description: 'Display this usage guide.',
+  },
 ];
 const options = commandLineArgs(optionDefinitions);
+
+if (options['help']) {
+  printUsage();
+  process.exit();
+}
 
 log.level = options['debug'] ? 'debug' : 'info';
 
