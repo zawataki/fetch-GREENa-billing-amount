@@ -4,6 +4,8 @@ const log4js = require('log4js');
 const fileName = path.basename(__filename);
 const log = log4js.getLogger(fileName);
 
+log.level = 'error';
+
 /**
  * Print usage of this script.
  */
@@ -82,6 +84,15 @@ const optionDefinitions = [
       + ' Accepts multiple year months as below.',
   },
   {
+    name: 'log-level',
+    type: String,
+    description: 'Log level. Valid values are "fatal", "error", "warn",'
+      + ` "info", "debug", and "trace". Default to "`
+      + `${log.level.toString().toLowerCase()}".`
+      + ' When this option and --debug option are enable,'
+      + ' set the value of this option to the log level.',
+  },
+  {
     name: 'debug',
     type: Boolean,
     description: 'Debug mode. Run a browser in non-headless mode and'
@@ -101,7 +112,17 @@ if (options['help']) {
   process.exit();
 }
 
-log.level = options['debug'] ? 'debug' : 'info';
+if (options['debug']) {
+  log.level = 'debug';
+}
+
+const VALID_LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'];
+if (options['log-level']) {
+  if (!VALID_LOG_LEVELS.includes(options['log-level'])) {
+    handleMisuseAndExit(`Invalid log level: "${options['log-level']}"`);
+  }
+  log.level = options['log-level'];
+}
 
 const requiredParameterNames = optionDefinitions.filter((opt) => opt.required)
   .map((opt) => opt.name);
@@ -214,7 +235,7 @@ async function getBillingAmountColumnIndex(tableHeaderTextList) {
     const URL_LOGIN = URL_BASE + '/login';
     await page.goto(URL_LOGIN);
 
-    log.debug('Log in');
+    log.info('Log in');
 
     await page.type('input#inputForm_inputBean_mailAddress', EMAIL_ADDRESS);
     await page.type('input#inputForm_inputBean_password', PASSWORD);
